@@ -1,11 +1,17 @@
 const axios = require("axios");
 const querystring = require("querystring");
-const fs = require('fs');
+const fs = require("fs");
+const axiosRetry = require("axios-retry");
 
 const config = require("./config");
 const logger = require("./logger");
 
-const AMO_TOKEN_PATH = 'amo_token.json';
+axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+
+
+const AMO_TOKEN_PATH = "amo_token.json";
+
+const LIMIT = 200;
 
 function Api() {
   let access_token = null;
@@ -13,17 +19,24 @@ function Api() {
   const ROOT_PATH = `https://${config.SUB_DOMAIN}.amocrm.ru`;
 
   const authChecker = (request) => {
-    return (...args) => {
+     return (...args) => {
       if (!access_token) {
         return this.getAccessToken().then(() => authChecker(request)(...args));
       }
       return request(...args).catch((err) => {
+        logger.error(err.response);
+        logger.error(err);
         logger.error(err.response.data);
         const data = err.response.data;
+        if('validation-errors' in data) {
+          data['validation-errors'].forEach(({errors}) => logger.error(errors))
+          logger.error('args',JSON.stringify(args, null, 2))
+        }
         if (data.status == 401 && data.title === "Unauthorized") {
           logger.debug("Нужно обновить токен");
           return refreshToken().then(() => authChecker(request)(...args));
         }
+        throw err
       });
     };
   };
@@ -45,26 +58,26 @@ function Api() {
         logger.error(err.response.data);
         throw err;
       });
-  }
+  };
 
   const getAccessToken = async () => {
-    if(access_token){
+    if (access_token) {
       return Promise.resolve(access_token);
     }
-    try{
+    try {
       const content = fs.readFileSync(AMO_TOKEN_PATH);
       const token = JSON.parse(content);
       access_token = token.access_token;
       refresh_token = token.refresh_token;
-      return Promise.resolve(token)
-    } catch(error) {
+      return Promise.resolve(token);
+    } catch (error) {
       logger.error(`Ошибка при чтении файла ${AMO_TOKEN_PATH}`, error);
-      logger.debug('Попытка заново получить токен');
+      logger.debug("Попытка заново получить токен");
       const token = await requestAccessToken();
       fs.writeFileSync(AMO_TOKEN_PATH, JSON.stringify(token));
       access_token = token.access_token;
       refresh_token = token.refresh_token;
-      return Promise.resolve(token)
+      return Promise.resolve(token);
     }
   };
 
@@ -78,44 +91,118 @@ function Api() {
         redirect_uri: config.REDIRECT_URI,
       })
       .then((res) => {
-        logger.debug('Токен успешно обновлен');
+        logger.debug("Токен успешно обновлен");
         const token = res.data;
         fs.writeFileSync(AMO_TOKEN_PATH, JSON.stringify(token));
         access_token = token.access_token;
         refresh_token = token.refresh_token;
-        return token
+        return token;
       })
       .catch((err) => {
-        logger.error('Не удалось обновить токен')
-        logger.error(err.response.data)
+        logger.error("Не удалось обновить токен");
+        logger.error(err.response.data);
       });
   };
 
   this.getAccessToken = getAccessToken;
 
   this.getDeal = authChecker((id, withParam = []) => {
-    return axios.get(
-      `${ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
-        with: withParam.join(","),
-      })}`,
-      {
+    return axios
+      .get(
+        `${ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
+          with: withParam.join(","),
+        })}`,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }
+      )
+      .then((res) => res.data);
+  });
+  
+  this.getDeals = authChecker(({ page = 1, limit = LIMIT, filters }) => {
+    const url = `${ROOT_PATH}/api/v4/leads?${querystring.stringify({
+      page,
+      limit,
+      with: ['contacts'],
+      ...filters,
+    })}`;
+    
+    return axios
+      .get(url, {
         headers: {
           Authorization: `Bearer ${access_token}`,
         },
-      }
-    ).then(res => res.data);
+      })
+      .then((res) => {
+        return res.data ? res.data._embedded.leads : [];
+      });
   });
 
-  this.getContact = authChecker((id) => {
-    return axios.get(`${ROOT_PATH}/api/v4/contacts/${id}`, {
+  this.updateDeals = authChecker((data) => {
+    return axios.patch(`${ROOT_PATH}/api/v4/leads`, [].concat(data), {
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
-    }).then(res => res.data);
+    });
+  });
+
+  this.getContacts = authChecker(({ page = 1, limit = LIMIT }) => {
+    const url = `${ROOT_PATH}/api/v4/contacts?${querystring.stringify({
+      page,
+      limit,
+      with: ['leads'],
+    })}`;
+    return axios
+      .get(url, {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      })
+      .then((res) => {
+        return res.data ? res.data._embedded.contacts : [];
+      });
+  });
+
+  this.getContact = authChecker((id) => {
+    return axios
+      .get(`${ROOT_PATH}/api/v4/contacts/${id}?${querystring.stringify({
+        with: ['leads']
+      })}`, {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      })
+      .then((res) => res.data);
   });
 
   this.updateContacts = authChecker((data) => {
     return axios.patch(`${ROOT_PATH}/api/v4/contacts`, [].concat(data), {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+  });
+
+  this.createContacts = authChecker((data) => {
+    return axios.post(`${ROOT_PATH}/api/v4/contacts`, [].concat(data), {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+  });
+
+  this.createDeals = authChecker((data) => {
+    return axios.post(`${ROOT_PATH}/api/v4/leads`, [].concat(data), {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+  });
+
+  this.addDealsComplex = authChecker((data) => {
+    return axios.post(`${ROOT_PATH}/api/v4/leads/complex`, [].concat(data), {
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
@@ -132,28 +219,54 @@ function Api() {
   });
 
   this.getPipeline = authChecker((pipelineId) => {
-    return axios.get(`${ROOT_PATH}/api/v4/leads/pipelines/${pipelineId}`, {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    }).then(res => res.data);
+    return axios
+      .get(`${ROOT_PATH}/api/v4/leads/pipelines/${pipelineId}`, {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      })
+      .then((res) => res.data);
   });
 
-  this.getStatus = authChecker(({pipelineId, statusId}) => {
-    return axios.get(`${ROOT_PATH}/api/v4/leads/pipelines/${pipelineId}/statuses/${statusId}`, {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    }).then(res => res.data);
+  this.getStatus = authChecker(({ pipelineId, statusId }) => {
+    return axios
+      .get(
+        `${ROOT_PATH}/api/v4/leads/pipelines/${pipelineId}/statuses/${statusId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }
+      )
+      .then((res) => res.data);
   });
-
+  
   this.getUser = authChecker((userId) => {
-    return axios.get(`${ROOT_PATH}/api/v4/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    }).then(res => res.data);
+    return axios
+      .get(`${ROOT_PATH}/api/v4/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      })
+      .then((res) => res.data);
   });
+
+  this.getUsers = authChecker(({ page = 1, limit = LIMIT }) => {
+    const url = `${ROOT_PATH}/api/v4/users?${querystring.stringify({
+      page,
+      limit,
+    })}`;
+    return axios
+      .get(url, {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      })
+      .then((res) => {
+        return res.data ? res.data._embedded.users : [];
+      });
+  });
+
 }
 
 module.exports = new Api();
