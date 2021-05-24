@@ -1,11 +1,9 @@
 const express = require("express");
 const axios = require("axios");
 
-const makeApi = require("./api");
+const api = require("./api");
 const logger = require("./logger");
 const config = require("./config");
-
-const api = makeApi(true);
 
 const app = express();
 
