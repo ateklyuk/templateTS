@@ -4,6 +4,7 @@
   "description": "code templates for development",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js", 
     "test": "eslint ./"
   },
   "author": "",
