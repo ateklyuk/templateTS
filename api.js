@@ -39,7 +39,7 @@ function Api() {
 					logger.debug("Нужно обновить токен");
 					return refreshToken().then(() => authChecker(request)(...args));
 				}
-				throw err; 
+				throw err;
 			});
 		};
 	};
@@ -153,33 +153,6 @@ function Api() {
 		});
 	});
 
-	// Создать сделки
-	this.createDeals = authChecker((data) => {
-		return axios.post(`${ROOT_PATH}/api/v4/leads`, [].concat(data), {
-			headers: {
-				Authorization: `Bearer ${access_token}`,
-			},
-		});
-	});
-
-	// Получить контакты
-	this.getContacts = authChecker(({ page = 1, limit = LIMIT }) => {
-		const url = `${ROOT_PATH}/api/v4/contacts?${querystring.stringify({
-			page,
-			limit,
-			with: ["leads"],
-		})}`;
-		return axios
-			.get(url, {
-				headers: {
-					Authorization: `Bearer ${access_token}`,
-				},
-			})
-			.then((res) => {
-				return res.data ? res.data._embedded.contacts : [];
-			});
-	});
-
 	// Получить контакт по id
 	this.getContact = authChecker((id) => {
 		return axios
@@ -202,77 +175,6 @@ function Api() {
 		});
 	});
 
-	// Создать контакты
-	this.createContacts = authChecker((data) => {
-		return axios.post(`${ROOT_PATH}/api/v4/contacts`, [].concat(data), {
-			headers: {
-				Authorization: `Bearer ${access_token}`,
-			},
-		});
-	});
-
-	// Создать задачи
-	this.createTasks = authChecker((data) => {
-		const tasksData = [].concat(data);
-		return axios.post(`${ROOT_PATH}/api/v4/tasks`, tasksData, {
-			headers: {
-				Authorization: `Bearer ${access_token}`,
-			},
-		});
-	});
-
-	// Получить данные воронки по ее id
-	this.getPipeline = authChecker((pipelineId) => {
-		return axios
-			.get(`${ROOT_PATH}/api/v4/leads/pipelines/${pipelineId}`, {
-				headers: {
-					Authorization: `Bearer ${access_token}`,
-				},
-			})
-			.then((res) => res.data);
-	});
-
-	// Получить данные по статусу воронки по id воронки и id статуса
-	this.getStatus = authChecker(({ pipelineId, statusId }) => {
-		return axios
-			.get(
-				`${ROOT_PATH}/api/v4/leads/pipelines/${pipelineId}/statuses/${statusId}`,
-				{
-					headers: {
-						Authorization: `Bearer ${access_token}`,
-					},
-				}
-			)
-			.then((res) => res.data);
-	});
-
-	// Получить данные пользователя crm по его id
-	this.getUser = authChecker((userId) => {
-		return axios
-			.get(`${ROOT_PATH}/api/v4/users/${userId}`, {
-				headers: {
-					Authorization: `Bearer ${access_token}`,
-				},
-			})
-			.then((res) => res.data);
-	});
-
-	// Получить данные всех пользователей crm
-	this.getUsers = authChecker(({ page = 1, limit = LIMIT }) => {
-		const url = `${ROOT_PATH}/api/v4/users?${querystring.stringify({
-			page,
-			limit,
-		})}`;
-		return axios
-			.get(url, {
-				headers: {
-					Authorization: `Bearer ${access_token}`,
-				},
-			})
-			.then((res) => {
-				return res.data ? res.data._embedded.users : [];
-			});
-	});
 }
 
 module.exports = new Api();
