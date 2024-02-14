@@ -1,24 +1,20 @@
+"use strict";
 /**
- * Основной модуль приложения - точка входа. 
+ * Основной модуль приложения - точка входа.
  */
-
-const express = require("express");
-const api = require("./api");
-const logger = require("./logger");
-const config = require("./config");
-
-const app = express();
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-api.getAccessToken().then(() => {
-	app.get("/ping", (req, res) => res.send("pong " + Date.now()));
-
-	app.post("/hook", (req, res) => {
-		console.log(req.data);
-		res.send("OK");
-	});
-
-	app.listen(config.PORT, () => logger.debug("Server started on ", config.PORT));
+Object.defineProperty(exports, "__esModule", { value: true });
+var express_1 = require("express");
+var api_1 = require("./api");
+var logger_1 = require("./logger");
+var config_1 = require("./config");
+var app = (0, express_1.default)();
+app.use(express_1.default.json());
+app.use(express_1.default.urlencoded({ extended: true }));
+api_1.default.getAccessToken().then(function () {
+    app.get("/ping", function (req, res) { return res.send("pong " + Date.now()); });
+    app.post("/hook", function (req, res) {
+        console.log(req.data);
+        res.send("OK");
+    });
+    app.listen(config_1.config.PORT, function () { return logger_1.logger.debug("Server started on ", config_1.config.PORT); });
 });
