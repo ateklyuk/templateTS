@@ -6,6 +6,7 @@
 
 import fs from "fs";
 import {logger} from "./logger";
+import {CustomField} from "./types";
 
 /**
  * Функция извлекает значение из id поля, массива полей custom_fields сущности amoCRM
@@ -14,11 +15,7 @@ import {logger} from "./logger";
  * @param {*} fieldId - id поля из которого нужно получить значение;
  * @returns значение поля
  */
-type CustomField = {
-	field_id: number,
-	id: number,
-	values: { value: string }[],
-}
+
 export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): string | undefined => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))

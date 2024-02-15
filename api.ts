@@ -9,6 +9,7 @@ import fs from "fs";
 import axiosRetry from "axios-retry";
 import {config} from "./config"
 import {logger} from "./logger";
+import {GetDealRes, GetDealsRes, GetTokenRes, Request} from "./types";
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
@@ -16,38 +17,8 @@ const AMO_TOKEN_PATH = "amo_token.json";
 
 const LIMIT = 200;
 
-type GetTokenRes = {
-	token_type: string,
-	expires_in: number,
-	access_token: string,
-	refresh_token: string
-}
-type GetDealRes = {}
-type GetDealsRes = {
-	_page: number,
-	_links: {},
-	_embedded: {leads: Array<{}>}
-}
-type Request = {
-	id: number,
-	limit: number,
-	page: number,
-	filters: number[],
-}
-type ApiClass = {
-	authChecker: Function,
-	requestAccessToken: Function,
-	getAccessToken: Function,
-	refreshToken: Function,
-	getDeal: Function,
-	getDeals: Function,
-	updateDeals: Function,
-	getContact: Function,
-	updateContacts: Function
-}
 
-
-export default class Api<T>{
+export default class Api{
 	access_token: null | string = null;
 	refresh_token: null | string = null;
 	ROOT_PATH: string = `https://${config.SUB_DOMAIN}.amocrm.ru`;

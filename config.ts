@@ -1,7 +1,7 @@
 /**
  * Модуль содержит ключи интеграции и другие конфигурации
  */
-import Config from "./interfaces"
+import {Config} from "./types"
 
 export const config: Config = {
 	// данные для api amocrm

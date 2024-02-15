@@ -6,7 +6,6 @@ import express from "express";
 import Api from "./api";
 import {logger} from "./logger";
 import {config} from "./config";
-import {strict} from "assert";
 
 const app = express();
 
