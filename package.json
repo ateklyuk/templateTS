@@ -4,6 +4,7 @@
   "description": "code templates for development",
   "main": "index.ts",
   "scripts": {
+		"build" : "tsc",
     "start": "node build/index.js",
     "test": "eslint ./"
   },
