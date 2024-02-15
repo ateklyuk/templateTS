@@ -22,31 +22,40 @@ type GetTokenRes = {
 	access_token: string,
 	refresh_token: string
 }
-type GetDealRes = {
-}
+type GetDealRes = {}
 type GetDealsRes = {
 	_page: number,
 	_links: {},
 	_embedded: {leads: Array<{}>}
 }
 type Request = {
-	id?: number,
-	limit?: number,
-	page?: number,
-	filters?: Array<number>,
-
+	id: number,
+	limit: number,
+	page: number,
+	filters: number[],
+}
+type ApiClass = {
+	authChecker: Function,
+	requestAccessToken: Function,
+	getAccessToken: Function,
+	refreshToken: Function,
+	getDeal: Function,
+	getDeals: Function,
+	updateDeals: Function,
+	getContact: Function,
+	updateContacts: Function
 }
 
 
-export default function Api() {
-	let access_token: null | String = null;
-	let refresh_token: null | String = null;
-	const ROOT_PATH: string = `https://${config.SUB_DOMAIN}.amocrm.ru`;
+export default class Api<T>{
+	access_token: null | string = null;
+	refresh_token: null | string = null;
+	ROOT_PATH: string = `https://${config.SUB_DOMAIN}.amocrm.ru`;
 
-	const authChecker = (request: Request) => {
+	authChecker = <T, U>(request: (args: T) => Promise<U>): ((args: T) => Promise<U>) => {
 		return (...args) => {
-			if (!access_token) {
-				return this.getAccessToken().then(() => authChecker(request)(...args));
+			if (!this.access_token) {
+				return this.getAccessToken().then(() => this.authChecker(request)(...args));
 			}
 			return request(...args).catch((err) => {
 				logger.error(err.response);
@@ -54,21 +63,21 @@ export default function Api() {
 				logger.error(err.response.data);
 				const data = err.response.data;
 				if ("validation-errors" in data) {
-					data["validation-errors"].forEach(({ errors }) => logger.error(errors));
+					data["validation-errors"].forEach(({ errors }: {errors: Error[]}) => logger.error(errors));
 					logger.error("args", JSON.stringify(args, null, 2));
 				}
 				if (data.status == 401 && data.title === "Unauthorized") {
 					logger.debug("Нужно обновить токен");
-					return refreshToken().then(() => authChecker(request)(...args));
+					return this.refreshToken().then(() => this.authChecker(request)(...args));
 				}
 				throw err;
 			});
 		};
 	};
 
-	const requestAccessToken = () => {
+	requestAccessToken = () => {
 		return axios
-			.post<GetTokenRes>(`${ROOT_PATH}/oauth2/access_token`, {
+			.post<GetTokenRes>(`${this.ROOT_PATH}/oauth2/access_token`, {
 				client_id: config.CLIENT_ID,
 				client_secret: config.CLIENT_SECRET,
 				grant_type: "authorization_code",
@@ -85,42 +94,42 @@ export default function Api() {
 			});
 	};
 
-	const getAccessToken = async (): Promise<String> => {
-		if (access_token) {
-			return Promise.resolve(access_token);
+	getAccessToken = async (): Promise<GetTokenRes | String | any> => {
+		if (this.access_token) {
+			return Promise.resolve(this.access_token);
 		}
 		try {
 			const content = fs.readFileSync(AMO_TOKEN_PATH);
-			const token = JSON.parse(content);
+			const token = JSON.parse(content.toString());
 			console.log(token)
-			access_token = token.access_token;
-			refresh_token = token.refresh_token;
+			this.access_token = token.access_token;
+			this.refresh_token = token.refresh_token;
 			return Promise.resolve(token);
 		} catch (error) {
 			logger.error(`Ошибка при чтении файла ${AMO_TOKEN_PATH}`, error);
 			logger.debug("Попытка заново получить токен");
-			const token = await requestAccessToken();
+			const token = await this.requestAccessToken();
 			fs.writeFileSync(AMO_TOKEN_PATH, JSON.stringify(token));
-			access_token = token.access_token;
-			refresh_token = token.refresh_token;
+			this.access_token = token.access_token;
+			this.refresh_token = token.refresh_token;
 			return Promise.resolve(token);
 		}
 	};
-	const refreshToken = () => {
+	refreshToken = () =>  {
 		return axios
-			.post<GetTokenRes>(`${ROOT_PATH}/oauth2/access_token`, {
+			.post<GetTokenRes>(`${this.ROOT_PATH}/oauth2/access_token`, {
 				client_id: config.CLIENT_ID,
 				client_secret: config.CLIENT_SECRET,
 				grant_type: "refresh_token",
-				refresh_token: refresh_token,
+				refresh_token: this.refresh_token,
 				redirect_uri: config.REDIRECT_URI,
 			})
 			.then((res) => {
 				logger.debug("Токен успешно обновлен");
 				const token = res.data;
 				fs.writeFileSync(AMO_TOKEN_PATH, JSON.stringify(token));
-				access_token = token.access_token;
-				refresh_token = token.refresh_token;
+				this.access_token = token.access_token;
+				this.refresh_token = token.refresh_token;
 				return token;
 			})
 			.catch((err) => {
@@ -129,36 +138,34 @@ export default function Api() {
 			});
 	};
 
-	this.getAccessToken = getAccessToken;
 	// Получить сделку по id
-	this.getDeal = authChecker((id, withParam = []) => {
+	getDeal = this.authChecker((id, withParam = []) => {
 		return axios
 			.get<GetDealRes>(
-				`${ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
+				`${this.ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
 					with: withParam.join(","),
 				})}`,
 				{
 					headers: {
-						Authorization: `Bearer ${access_token}`,
+						Authorization: `Bearer ${this.access_token}`,
 					},
 				}
 			)
 			.then((res) => res.data);
 	});
-
 	// Получить сделки по фильтрам
-	this.getDeals = authChecker(({ page = 1, limit = LIMIT, filters }) => {
-		const url = `${ROOT_PATH}/api/v4/leads?${querystring.stringify({
+	getDeals = this.authChecker<Request, GetDealsRes | {}>(({ page = 1, limit = LIMIT, filters }) => {
+		const url = `${this.ROOT_PATH}/api/v4/leads?${querystring.stringify({
 			page,
 			limit,
 			with: ["contacts"],
-			...filters,
+			filters,
 		})}`;
 
 		return axios
 			.get<GetDealsRes>(url, {
 				headers: {
-					Authorization: `Bearer ${access_token}`,
+					Authorization: `Bearer ${this.access_token}`,
 				},
 			})
 			.then((res) => {
@@ -167,35 +174,34 @@ export default function Api() {
 	});
 
 	// Обновить сделки
-	this.updateDeals = authChecker((data) => {
-		return axios.patch(`${ROOT_PATH}/api/v4/leads`, [].concat(data), {
+	updateDeals = this.authChecker((data) => {
+		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, [data], {
 			headers: {
-				Authorization: `Bearer ${access_token}`,
+				Authorization: `Bearer ${this.access_token}`,
 			},
 		});
 	});
 
 	// Получить контакт по id
-	this.getContact = authChecker((id) => {
+	getContact = this.authChecker((id) => {
 		return axios
-			.get(`${ROOT_PATH}/api/v4/contacts/${id}?${querystring.stringify({
+			.get(`${this.ROOT_PATH}/api/v4/contacts/${id}?${querystring.stringify({
 				with: ["leads"]
 			})}`, {
 				headers: {
-					Authorization: `Bearer ${access_token}`,
+					Authorization: `Bearer ${this.access_token}`,
 				},
 			})
 			.then((res) => res.data);
 	});
 
 	// Обновить контакты
-	this.updateContacts = authChecker((data) => {
-		return axios.patch(`${ROOT_PATH}/api/v4/contacts`, [].concat(data), {
+	updateContacts = this.authChecker<Request, string>((data) => {
+		return axios.patch(`${this.ROOT_PATH}/api/v4/contacts`, [data], {
 			headers: {
-				Authorization: `Bearer ${access_token}`,
+				Authorization: `Bearer ${this.access_token}`,
 			},
 		});
 	});
 
 }
-
