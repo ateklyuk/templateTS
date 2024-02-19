@@ -9,7 +9,7 @@ import fs from "fs";
 import axiosRetry from "axios-retry";
 import {config} from "./config"
 import {logger} from "./logger";
-import {GetDealRes, GetDealsRes, GetTokenRes, Request} from "./types";
+import {RequestQuery, token} from "./types";
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
@@ -46,9 +46,9 @@ export default new class Api{
 		};
 	};
 
-	requestAccessToken = () => {
+	requestAccessToken = (): Promise<token> => {
 		return axios
-			.post<GetTokenRes>(`${this.ROOT_PATH}/oauth2/access_token`, {
+			.post(`${this.ROOT_PATH}/oauth2/access_token`, {
 				client_id: config.CLIENT_ID,
 				client_secret: config.CLIENT_SECRET,
 				grant_type: "authorization_code",
@@ -72,7 +72,6 @@ export default new class Api{
 		try {
 			const content = fs.readFileSync(AMO_TOKEN_PATH);
 			const token = JSON.parse(content.toString());
-			console.log(token)
 			this.access_token = token.access_token;
 			this.refresh_token = token.refresh_token;
 			return Promise.resolve(token.access_token);
@@ -86,9 +85,9 @@ export default new class Api{
 			return Promise.resolve(token.access_token);
 		}
 	};
-	refreshToken = () =>  {
+	refreshToken = (): Promise<string> =>  {
 		return axios
-			.post<GetTokenRes>(`${this.ROOT_PATH}/oauth2/access_token`, {
+			.post(`${this.ROOT_PATH}/oauth2/access_token`, {
 				client_id: config.CLIENT_ID,
 				client_secret: config.CLIENT_SECRET,
 				grant_type: "refresh_token",
@@ -110,9 +109,9 @@ export default new class Api{
 	};
 
 	// Получить сделку по id
-	getDeal = this.authChecker((id, withParam = []) => {
+	getDeal = this.authChecker<RequestQuery, object>((id, withParam = []): Promise<object> => {
 		return axios
-			.get<GetDealRes>(
+			.get(
 				`${this.ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
 					with: withParam.join(","),
 				})}`,
@@ -125,7 +124,7 @@ export default new class Api{
 			.then((res) => res.data);
 	});
 	// Получить сделки по фильтрам
-	getDeals = this.authChecker<Request, GetDealsRes | {}>(({ page = 1, limit = LIMIT, filters }) => {
+	getDeals = this.authChecker<RequestQuery, []>(({ page = 1, limit = LIMIT, filters }): Promise<[]> => {
 		const url = `${this.ROOT_PATH}/api/v4/leads?${querystring.stringify({
 			page,
 			limit,
@@ -134,7 +133,7 @@ export default new class Api{
 		})}`;
 
 		return axios
-			.get<GetDealsRes>(url, {
+			.get(url, {
 				headers: {
 					Authorization: `Bearer ${this.access_token}`,
 				},
@@ -145,7 +144,7 @@ export default new class Api{
 	});
 
 	// Обновить сделки
-	updateDeals = this.authChecker((data) => {
+	updateDeals = this.authChecker<object, unknown>((data): Promise<unknown> => {
 		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, [data], {
 			headers: {
 				Authorization: `Bearer ${this.access_token}`,
@@ -154,7 +153,7 @@ export default new class Api{
 	});
 
 	// Получить контакт по id
-	getContact = this.authChecker((id) => {
+	getContact = this.authChecker<number, []>((id): Promise<[]> => {
 		return axios
 			.get(`${this.ROOT_PATH}/api/v4/contacts/${id}?${querystring.stringify({
 				with: ["leads"]
@@ -167,7 +166,7 @@ export default new class Api{
 	});
 
 	// Обновить контакты
-	updateContacts = this.authChecker<Request, string>((data) => {
+	updateContacts = this.authChecker<object, unknown>((data): Promise<unknown> => {
 		return axios.patch(`${this.ROOT_PATH}/api/v4/contacts`, [data], {
 			headers: {
 				Authorization: `Bearer ${this.access_token}`,

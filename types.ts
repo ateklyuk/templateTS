@@ -6,26 +6,20 @@ export type Config = {
 	SUB_DOMAIN: string,
 	PORT: number
 }
-export type GetTokenRes = {
-	token_type: string,
-	expires_in: number,
-	access_token: string,
-	refresh_token: string
-}
-export type GetDealRes = {}
-export type GetDealsRes = {
-	_page: number,
-	_links: {},
-	_embedded: {leads: Array<{}>}
-}
-export type Request = {
+
+export type RequestQuery = {
 	id: number,
 	limit: number,
 	page: number,
 	filters: number[],
+	withParam: []
 }
 export type CustomField = {
 	field_id: number,
 	id: number,
 	values: { value: string }[],
+}
+export type token = {
+	access_token: string,
+	refresh_token: string
 }

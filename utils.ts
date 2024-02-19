@@ -16,11 +16,11 @@ import {CustomField} from "./types";
  * @returns значение поля
  */
 
-export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): string | undefined => {
+export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): undefined | { value: string } => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))
 		: undefined;
-	return field ? field.values[0].value : undefined;
+	return field && field.values[0];
 };
 
 /**
