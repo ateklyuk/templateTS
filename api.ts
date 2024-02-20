@@ -151,7 +151,7 @@ export default new class Api{
 	});
 
 	// Обновить сделки
-	updateDeals = this.authChecker<DealsUpdateData, unknown>((data): Promise<unknown> => {
+	updateDeals = this.authChecker<DealsUpdateData, void>((data): Promise<void> => {
 		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, [data], {
 			headers: {
 				Authorization: `Bearer ${this.access_token}`,
