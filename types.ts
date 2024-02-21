@@ -1,3 +1,4 @@
+import {config} from "./config";
 
 export type Config = {
 	CLIENT_ID: string,
@@ -33,38 +34,43 @@ export type Token = {
 	refresh_token: string
 }
 
-export type DealRes = {
+export type DealsUpdateData = {
 	id: number,
+	pipeline_id: number,
+	status_id?: number,
+	closed_at?: number,
+	loss_reason_id?: number,
+	updated_by?: number,
 	name: string,
 	price: number,
 	responsible_user_id: number,
 	group_id: number,
-	status_id: number,
-	pipeline_id: number,
-}
-
-
-export type DealsUpdateData = {
-	id: number,
-	pipeline_id: number,
-	status_id: number,
-	closed_at: number,
-	loss_reason_id: number,
-	updated_by: number
-}
-
-export type ContactRes = {
-	id: number,
-	name: string,
-	first_name: string,
-	last_name: string,
-	responsible_user_id: number,
-	custom_fields_values: {}[]
 }
 
 export type ContactsUpdateData = {
 	id: number,
+	name?: string,
 	first_name: string,
 	last_name: string,
+	responsible_user_id?: number,
 	custom_fields_values: {}[]
+}
+
+export type DataType = {
+	client_id: string,
+	client_secret: string,
+	redirect_uri: string,
+	grant_type: string,
+	code?: string,
+	refresh_token?: string | null,
+}
+
+export type FieldsResponse = {
+	field_id: number,
+	values:
+		[
+			{
+				value: unknown,
+				enum_id: number
+			}]
 }

@@ -6,7 +6,7 @@
 
 import fs from "fs";
 import {logger} from "./logger";
-import {CustomField} from "./types";
+import {CustomField, FieldsResponse} from "./types";
 
 /**
  * Функция извлекает значение из id поля, массива полей custom_fields сущности amoCRM
@@ -16,7 +16,7 @@ import {CustomField} from "./types";
  * @returns значение поля
  */
 
-export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): undefined | { value: string } => {
+export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): undefined | { value: unknown } => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))
 		: undefined;
@@ -31,7 +31,7 @@ export const getFieldValue = <T extends CustomField, U>(customFields: T[], field
  * @param {*} fieldId - id поля из которого нужно получить значения;
  * @returns массив значений поля
  */
-export const getFieldValues = <T extends CustomField, U>(customFields: T[], fieldId: U) => {
+export const getFieldValues = <T extends CustomField, U>(customFields: T[], fieldId: U): unknown[] => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))
 		: undefined;
@@ -46,7 +46,7 @@ export const getFieldValues = <T extends CustomField, U>(customFields: T[], fiel
  * @param {*} enum_id - В случае, если поле списковое или мультисписковое, то для указания нужного значения указывается данный параметр, т.е. id - варианта списка;
  * @returns типовой объект с данными о поле, который необходимо передать в amoCRM.
  */
-export const makeField = <T, U, K>(field_id: T, value: U, enum_id: K) => {
+export const makeField = <T>(field_id: number, value: T, enum_id: number): undefined | FieldsResponse  => {
 	if (value === undefined || value === null) {
 		return undefined;
 	}
@@ -72,8 +72,8 @@ export const bulkOperation = async <T, U>(
 	request: (args: T[]) => Promise<U>,
 	data: T[],
 	chunkSize: number,
-	operationName = "bulk"
-) => {
+	operationName: string = "bulk"
+): Promise<void> => {
 	let failed = [];
 	if (data.length) {
 		logger.debug(`Старт операции ${operationName}`);
@@ -108,7 +108,7 @@ export const bulkOperation = async <T, U>(
  * @param {*} limit - лимит на количество элементов в ответе (по дефолту - 200)
  * @returns [ ...elements ] все элементы сущности аккаунта
  */
-export const getAllPages = async <T>(request: (args: {}) => Promise<T[]>, page = 1, limit = 200) => {
+export const getAllPages = async <T>(request: (args: {}) => Promise<T[]>, page: number = 1, limit: number = 200): Promise<T[] | undefined> => {
 	try {
 		console.log(`Загрузка страницы ${page}`);
 		const res = await request({ page, limit });
@@ -128,6 +128,6 @@ export const getAllPages = async <T>(request: (args: {}) => Promise<T[]>, page =
  * @param {*} tel - String
  * @returns String | undefined
  */
-export const getClearPhoneNumber = (tel: string) => {
+export const getClearPhoneNumber = (tel: string): string | undefined => {
 	return tel ? tel.split("").filter(item => new RegExp(/\d/).test(item)).join("") : undefined;
 };
