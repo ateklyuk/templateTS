@@ -21,23 +21,19 @@ const LIMIT = 200;
 export default new class Api {
 	private access_token: null | string = null;
 	private refresh_token: null | string = null;
+	private defaultParams: object = {}
+	private defaultTimeout: number = 0
+
 	private ROOT_PATH: string = `https://${config.SUB_DOMAIN}.amocrm.ru`;
-	private headers = {
-		headers: {
-			Authorization: `Bearer ${this.access_token}`,
+	private getConfig = (params?: object, timeout?: number) => {
+		return {
+			params: params ?? this.defaultParams,
+			headers: {
+				Authorization: `Bearer ${this.access_token}`,
+			},
+			timeout: timeout ?? this.defaultTimeout
 		}
 	}
-	private queryGetDeal = (withParam: never[]) => querystring.encode({
-		with: withParam.join(",")})
-	private queryGetDeals = (page: number, limit: number, filters: number[]) => querystring.stringify({
-		page,
-		limit,
-		with: ["contacts"],
-		filters,
-	})
-	private queryGetContact = () => querystring.stringify({
-		with: ["leads"]
-	})
 	private createData = (grant_type: string): object => {
 		const data: DataType = {
 			client_id: config.CLIENT_ID,
@@ -47,9 +43,7 @@ export default new class Api {
 		}
 		if (grant_type === "refresh_token") {
 			data.refresh_token = this.refresh_token
-		}
-		data.code = config.AUTH_CODE
-		console.log(data)
+		} else data.code = config.AUTH_CODE
 		return data
 	}
 
@@ -128,37 +122,46 @@ export default new class Api {
 	};
 
 	// Получить сделку по id
-	public getDeal = this.authChecker<RequestQuery, DealsUpdateData>((id, withParam = []): Promise<DealsUpdateData> => {
+	public getDeal = this.authChecker<RequestQuery, DealsUpdateData>(({id, withParam = []}): Promise<DealsUpdateData> => {
 		return axios
 			.get<DealsUpdateData>(
-				`${this.ROOT_PATH}/api/v4/leads/${id}?${this.queryGetDeal(withParam)}`, this.headers)
+				`${this.ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
+					with: withParam.join(",")
+				})}`, this.getConfig())
 			.then((res) => res.data);
 	});
 	// Получить сделки по фильтрам
 	public getDeals = this.authChecker<RequestQuery, DealsUpdateData[]>(({page = 1, limit = LIMIT, filters}): Promise<DealsUpdateData[]> => {
-		const url = `${this.ROOT_PATH}/api/v4/leads?${this.queryGetDeals(page, limit, filters)}`;
+		const url = `${this.ROOT_PATH}/api/v4/leads?${querystring.stringify({
+			page,
+			limit,
+			with: ["contacts"],
+			filters,
+		})}`;
 		return axios
-			.get(url, this.headers)
+			.get(url, this.getConfig())
 			.then((res) => {
 				return res.data ? res.data._embedded.leads : [];
 			});
 	});
 
 	// Обновить сделки
-	public updateDeals = this.authChecker<DealsUpdateData, void>((data): Promise<void> => {
-		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, [data], this.headers);
+	public updateDeals = this.authChecker<DealsUpdateData, object>((data): Promise<{ _embedded:object }> => {
+		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, data, this.getConfig());
 	});
 
 	// Получить контакт по id
 	public getContact = this.authChecker<number, ContactsUpdateData>((id: number): Promise<ContactsUpdateData> => {
 		return axios
-			.get<ContactsUpdateData>(`${this.ROOT_PATH}/api/v4/contacts/${id}?${this.queryGetContact()}`, this.headers)
+			.get<ContactsUpdateData>(`${this.ROOT_PATH}/api/v4/contacts/${id}?${querystring.stringify({
+				with: ["leads"]
+			})}`, this.getConfig())
 			.then((res) => res.data);
 	});
 
 	// Обновить контакты
 	public updateContacts = this.authChecker<ContactsUpdateData, unknown>((data): Promise<unknown> => {
-		return axios.patch(`${this.ROOT_PATH}/api/v4/contacts`, [data], this.headers);
+		return axios.patch(`${this.ROOT_PATH}/api/v4/contacts`, [data], this.getConfig());
 	});
 
 }

@@ -1,4 +1,3 @@
-import {config} from "./config";
 
 export type Config = {
 	CLIENT_ID: string,
@@ -7,14 +6,6 @@ export type Config = {
 	REDIRECT_URI: string,
 	SUB_DOMAIN: string,
 	PORT: number
-}
-
-export type PostTokenData = {
-	client_id: string,
-	client_secret: string,
-	grant_type: string,
-	refresh_token: string,
-	redirect_uri: string,
 }
 
 export type RequestQuery = {
@@ -45,7 +36,7 @@ export type DealsUpdateData = {
 	price: number,
 	responsible_user_id: number,
 	group_id: number,
-}
+}[]
 
 export type ContactsUpdateData = {
 	id: number,
