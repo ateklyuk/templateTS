@@ -16,13 +16,13 @@ import {CustomField, FieldsResponse} from "./types";
  * @returns значение поля
  */
 
-export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): undefined | { value: string | number | boolean | undefined } => {
+export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): string | number | boolean | undefined  => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))
 		: undefined;
-	return field && field.values[0];
+	return field && field.values[0].value;
 };
-
+ 
 /**
  * Функция извлекает значения из id поля, массива полей custom_fields сущности amoCRM
  * Подходит для работы со списковыми или мультисписковыми полями
