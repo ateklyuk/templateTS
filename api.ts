@@ -4,12 +4,11 @@
  */
 
 import axios from "axios"
-import querystring from "querystring";
 import fs from "fs";
 import axiosRetry from "axios-retry";
 import {config} from "./config"
 import {logger} from "./logger";
-import {ContactsUpdateData, DataType, DealsUpdateData, RequestQuery, Token} from "./types";
+import {ContactsUpdateData, DataType, DealRes, DealsUpdateData, RequestQuery, Token} from "./types";
 
 axiosRetry(axios, {retries: 3, retryDelay: axiosRetry.exponentialDelay});
 
@@ -122,24 +121,18 @@ export default new class Api {
 	};
 
 	// Получить сделку по id
-	public getDeal = this.authChecker<RequestQuery, DealsUpdateData>(({id, withParam = []}): Promise<DealsUpdateData> => {
+	public getDeal = this.authChecker<RequestQuery, DealRes>(({id, withParam = []}): Promise<DealRes> => {
 		return axios
-			.get<DealsUpdateData>(
-				`${this.ROOT_PATH}/api/v4/leads/${id}?${querystring.encode({
-					with: withParam.join(",")
-				})}`, this.getConfig())
+			.get<DealRes>(
+				`${this.ROOT_PATH}/api/v4/leads/${id}?`,
+				this.getConfig({with: withParam.join(",")}))
 			.then((res) => res.data);
 	});
 	// Получить сделки по фильтрам
-	public getDeals = this.authChecker<RequestQuery, DealsUpdateData[]>(({page = 1, limit = LIMIT, filters}): Promise<DealsUpdateData[]> => {
-		const url = `${this.ROOT_PATH}/api/v4/leads?${querystring.stringify({
-			page,
-			limit,
-			with: ["contacts"],
-			filters,
-		})}`;
+	public getDeals = this.authChecker<RequestQuery, DealRes[]>(({page = 1, limit = LIMIT, filters}): Promise<DealRes[]> => {
+		const url = `${this.ROOT_PATH}/api/v4/leads`
 		return axios
-			.get(url, this.getConfig())
+			.get(url, this.getConfig({page, limit, with: ["contacts"], filters}))
 			.then((res) => {
 				return res.data ? res.data._embedded.leads : [];
 			});
@@ -147,15 +140,13 @@ export default new class Api {
 
 	// Обновить сделки
 	public updateDeals = this.authChecker<DealsUpdateData, object>((data): Promise<{ _embedded:object }> => {
-		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, data, this.getConfig());
+		return axios.patch(`${this.ROOT_PATH}/api/v4/leads`, [data], this.getConfig());
 	});
 
 	// Получить контакт по id
 	public getContact = this.authChecker<number, ContactsUpdateData>((id: number): Promise<ContactsUpdateData> => {
 		return axios
-			.get<ContactsUpdateData>(`${this.ROOT_PATH}/api/v4/contacts/${id}?${querystring.stringify({
-				with: ["leads"]
-			})}`, this.getConfig())
+			.get<ContactsUpdateData>(`${this.ROOT_PATH}/api/v4/contacts/${id}`, this.getConfig({with: ["leads"]}))
 			.then((res) => res.data);
 	});
 

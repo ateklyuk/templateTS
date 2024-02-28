@@ -37,7 +37,23 @@ export type DealsUpdateData = {
 	responsible_user_id: number,
 	group_id: number,
 }[]
-
+export type DealRes = {
+	custom_fields_values: CustomField[]
+	id: number,
+	name: string,
+	price: number,
+	responsible_user_id: number,
+	group_id: number,
+	status_id: number,
+	pipeline_id: number,
+	_embedded: {
+		contacts: [
+			{
+				id: number,
+				is_main: boolean,
+			}]
+	}
+}
 export type ContactsUpdateData = {
 	id: number,
 	name?: string,
