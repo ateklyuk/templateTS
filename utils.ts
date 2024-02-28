@@ -4,8 +4,9 @@
  *  - общего назначения;
  */
 
-const fs = require("fs");
-const logger = require("./logger");
+import fs from "fs";
+import {logger} from "./logger";
+import {CustomField, FieldsResponse} from "./types";
 
 /**
  * Функция извлекает значение из id поля, массива полей custom_fields сущности amoCRM
@@ -14,14 +15,14 @@ const logger = require("./logger");
  * @param {*} fieldId - id поля из которого нужно получить значение;
  * @returns значение поля
  */
-const getFieldValue = (customFields, fieldId) => {
+
+export const getFieldValue = <T extends CustomField, U>(customFields: T[], fieldId: U): string | number | boolean | undefined  => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))
 		: undefined;
-	const value = field ? field.values[0].value : undefined;
-	return value;
+	return field && field.values[0].value;
 };
-
+ 
 /**
  * Функция извлекает значения из id поля, массива полей custom_fields сущности amoCRM
  * Подходит для работы со списковыми или мультисписковыми полями
@@ -30,7 +31,7 @@ const getFieldValue = (customFields, fieldId) => {
  * @param {*} fieldId - id поля из которого нужно получить значения;
  * @returns массив значений поля
  */
-const getFieldValues = (customFields, fieldId) => {
+export const getFieldValues = <T extends CustomField, U>(customFields: T[], fieldId: U): unknown[] => {
 	const field = customFields
 		? customFields.find((item) => String(item.field_id || item.id) === String(fieldId))
 		: undefined;
@@ -45,7 +46,7 @@ const getFieldValues = (customFields, fieldId) => {
  * @param {*} enum_id - В случае, если поле списковое или мультисписковое, то для указания нужного значения указывается данный параметр, т.е. id - варианта списка;
  * @returns типовой объект с данными о поле, который необходимо передать в amoCRM.
  */
-const makeField = (field_id, value, enum_id) => {
+export const makeField = <T>(field_id: number, value: T, enum_id: number): undefined | FieldsResponse  => {
 	if (value === undefined || value === null) {
 		return undefined;
 	}
@@ -62,17 +63,17 @@ const makeField = (field_id, value, enum_id) => {
 
 /**
  * Функция для разбиения запроса на создание на несколько по chunkSize
- * @param {*} reqest - функция-запрос в amo
+ * @param {*} request - функция-запрос в amo
  * @param {*} data - данные запроса (до разбиения на chunkSize)
  * @param {*} chunkSize - размер chunkSize
  * @param {*} operationName - название операции
  */
-const bulkOperation = async (
-	reqest,
-	data,
-	chunkSize,
-	operationName = "bulk"
-) => {
+export const bulkOperation = async <T, U>(
+	request: (args: T[]) => Promise<U>,
+	data: T[],
+	chunkSize: number,
+	operationName: string = "bulk"
+): Promise<void> => {
 	let failed = [];
 	if (data.length) {
 		logger.debug(`Старт операции ${operationName}`);
@@ -81,7 +82,7 @@ const bulkOperation = async (
 			for (let i = 0; i < chunksCount; i++) {
 				try {
 					const sliced = data.slice(i * chunkSize, (i + 1) * chunkSize);
-					await reqest(sliced);
+					await request(sliced);
 				} catch (e) {
 					logger.error(e);
 					failed.push(...data.slice(i * chunkSize, (i + 1) * chunkSize));
@@ -107,12 +108,12 @@ const bulkOperation = async (
  * @param {*} limit - лимит на количество элементов в ответе (по дефолту - 200)
  * @returns [ ...elements ] все элементы сущности аккаунта
  */
-const getAllPages = async (request, page = 1, limit = 200) => {
+export const getAllPages = async <T>(request: (args: {}) => Promise<T[]>, page: number = 1, limit: number = 200): Promise<T[] | undefined> => {
 	try {
 		console.log(`Загрузка страницы ${page}`);
 		const res = await request({ page, limit });
 		if (res.length === limit) {
-			const next = await getAllPages(request, page + 1, limit);
+			const next =  <T[]>await getAllPages(request, page + 1, limit);
 			return [...res, ...next];
 		}
 		return res;
@@ -127,15 +128,6 @@ const getAllPages = async (request, page = 1, limit = 200) => {
  * @param {*} tel - String
  * @returns String | undefined
  */
-const getClearPhoneNumber = (tel) => {
+export const getClearPhoneNumber = (tel: string): string | undefined => {
 	return tel ? tel.split("").filter(item => new RegExp(/\d/).test(item)).join("") : undefined;
-};
-
-module.exports = {
-	getFieldValue,
-	getFieldValues,
-	makeField,
-	bulkOperation,
-	getAllPages,
-	getClearPhoneNumber
 };
