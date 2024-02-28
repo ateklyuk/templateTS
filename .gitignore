@@ -4,12 +4,14 @@ Thumbs.db
 .idea
 # Модули проекта
 node_modules/
+build
 # Папка для логирования
 logs/
 
 # Файлы авторизации
 authclients/
 build/
+authclients/
 amo_token.json
 
 # Любые другие файлы проекта
