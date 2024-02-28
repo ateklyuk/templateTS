@@ -1,15 +1,15 @@
 # Файлы и папки операционной системы
 .DS_Store
 Thumbs.db
-
+.idea
 # Модули проекта
 node_modules/
-
+build
 # Папка для логирования
 logs/
 
 # Файлы авторизации
-authclients/ 
+authclients/
 amo_token.json
 
 # Любые другие файлы проекта
